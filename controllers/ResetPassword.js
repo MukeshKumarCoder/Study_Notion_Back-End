@@ -39,6 +39,7 @@ exports.resetPasswordToken = async (req, res) => {
     //return response
     return res.status(200).json({
       success: true,
+      url: url,
       message:
         "Email sent successfully, Please check email and Reset Your Password",
     });

@@ -1,12 +1,12 @@
 const Profile = require("../models/Profile");
 const User = require("../models/User");
-const { uploadeImageToCloudinary } = require("../utilis/imageUploader");
+const { uploadImageToCloudinary } = require("../utilis/imageUploader");
 require("dotenv").config();
 
 // method for updating a profile
 exports.updateProfile = async (req, res) => {
   try {
-    const { dateOfBirth = "", about = "", contactNumber } = req.body;
+    const { dateOfBirth = "", about = "", contactNumber, gender } = req.body;
     const id = req.user.id;
 
     // find the profile fields
@@ -17,9 +17,10 @@ exports.updateProfile = async (req, res) => {
     profile.dateOfBirth = dateOfBirth;
     profile.about = about;
     profile.contactNumber = contactNumber;
+    profile.gender = gender;
 
     // save the updated profile
-    await profile.saveret();
+    await profile.save();
 
     return res.status(200).json({
       success: true,
@@ -49,7 +50,7 @@ exports.deleteAccount = async (req, res) => {
         message: "User not found",
       });
     }
-    // Delete Assosiated Profie with ther User
+    // Delete associates Profile with there User
     await Profile.findByIdAndDelete({ _id: user.additionalDetails });
     // TODO: Unenroll User From All the Enrolled Courses
     // Now Delete User
@@ -89,15 +90,15 @@ exports.getAllUserDetails = async (req, res) => {
 
 exports.updateDisplayPicture = async (req, res) => {
   try {
-    const displayPicture = req.files.displayPicture;
-    const userId = req.body.id;
-    const image = await uploadeImageToCloudinary(
+    const displayPicture = req.files?.displayPicture;
+    const userId = req.user?.id;
+    const image = await uploadImageToCloudinary(
       displayPicture,
       process.env.FOLDER_NAME,
       1000,
       1000
     );
-    console.log(image);
+    // console.log(image);
     const updateProfile = await User.findByIdAndUpdate(
       { _id: userId },
       { image: image.secure_url },
