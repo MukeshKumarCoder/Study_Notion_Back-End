@@ -1,16 +1,16 @@
 const Section = require("../models/Section");
 const SubSection = require("../models/SubSection");
-const { uploadeImageToCloudinary } = require("../utilis/imageUploader");
+const { uploadImageToCloudinary } = require("../utilis/imageUploader");
 require("dotenv").config();
 
 // create a new sub-section for a given section
 exports.createSubSection = async (req, res) => {
   try {
     // get data from req.body
-    const { sectionId, title, decription } = req.body;
+    const { sectionId, title, description } = req.body;
     const video = req.files.video;
     // check all fields are provided
-    if (!sectionId || !title || !decription || !video) {
+    if (!sectionId || !title || !description || !video) {
       return res.status(404).json({
         success: false,
         message: "All fields are required",
@@ -19,7 +19,7 @@ exports.createSubSection = async (req, res) => {
     console.log(video);
 
     // upload the video to cloudinary
-    const uploadDetails = await uploadeImageToCloudinary(
+    const uploadDetails = await uploadImageToCloudinary(
       video,
       process.env.FOLDER_NAME
     );
@@ -28,7 +28,7 @@ exports.createSubSection = async (req, res) => {
     const SubSectionDetails = await SubSection.create({
       title: title,
       timeDuration: `${uploadDetails.duration}`,
-      description: decription,
+      description: description,
       videoUrl: uploadDetails.secure_url,
     });
 
@@ -60,7 +60,7 @@ exports.createSubSection = async (req, res) => {
 
 exports.updateSubSection = async (req, res) => {
   try {
-    const { sectionId, title, decription } = req.body;
+    const { sectionId, title, description } = req.body;
     const subSection = await SubSection.findById(sectionId);
 
     if (!subSection) {
@@ -74,13 +74,13 @@ exports.updateSubSection = async (req, res) => {
       subSection.title = title;
     }
 
-    if (decription !== undefined) {
-      subSection.description = decription;
+    if (description !== undefined) {
+      subSection.description = description;
     }
 
     if (req.files && req.files.video !== undefined) {
       const video = req.files.video;
-      const uploadDetails = await uploadeImageToCloudinary(
+      const uploadDetails = await uploadImageToCloudinary(
         video,
         process.env.FOLDER_NAME
       );

@@ -1,7 +1,7 @@
 const Course = require("../models/Course");
 const Category = require("../models/Category");
 const User = require("../models/User");
-const { uploadeImageToCloudinary } = require("../utilis/imageUploader");
+const { uploadImageToCloudinary } = require("../utilis/imageUploader");
 require("dotenv").config();
 
 // Function to create a new course
@@ -11,7 +11,7 @@ exports.createCourse = async (req, res) => {
     const userId = req.user.id;
 
     //fetch data
-    const {
+    let {
       courseName,
       courseDescription,
       whatYouWillLearn,
@@ -56,7 +56,7 @@ exports.createCourse = async (req, res) => {
     }
 
     //check given tag is valid or not
-    const categoryDetails = await Tag.findById(category);
+    const categoryDetails = await Category.findById(category);
     if (!categoryDetails) {
       return res.status(404).json({
         success: false,
@@ -65,7 +65,7 @@ exports.createCourse = async (req, res) => {
     }
 
     //Upload Image top Cloudinary
-    const thumbnailImage = await uploadeImageToCloudinary(
+    const thumbnailImage = await uploadImageToCloudinary(
       thumbnail,
       process.env.FOLDER_NAME
     );

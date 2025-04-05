@@ -29,7 +29,7 @@ async function sendVerificationEmail(email, otp) {
     );
     console.log("Email sent Successfully", mailResponse.response);
   } catch (error) {
-    console.log("error occured while sending mail: ", error);
+    console.log("error occurred while sending mail: ", error);
     throw error;
   }
 }
