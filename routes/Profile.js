@@ -10,12 +10,12 @@ const {
 
 // profile Routes
 
-router.delete("/deleteprofile", auth, deleteAccount);
-router.put("/updateprofile", auth, updateProfile);
-router.get("/getuserdetails", auth, getAllUserDetails);
+router.delete("/delete-profile", auth, deleteAccount);
+router.put("/update-profile", auth, updateProfile);
+router.get("/get-user-details", auth, getAllUserDetails);
 
 // get Enrolled courses
-router.get("/getenrolledcourses", auth, getEnrolledCourses);
-router.put("/updatedisplaypicture", auth, updateDisplayPicture);
+router.get("/get-enrolled-courses", auth, getEnrolledCourses);
+router.put("/update-display-picture", auth, updateDisplayPicture);
 
 module.exports = router;

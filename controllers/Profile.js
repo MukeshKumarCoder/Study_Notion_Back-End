@@ -1,17 +1,30 @@
 const Profile = require("../models/Profile");
 const User = require("../models/User");
-const { uploadImageToCloudinary } = require("../utilis/imageUploader");
+const { uploadImageToCloudinary } = require("../utils/imageUploader");
 require("dotenv").config();
 
 // method for updating a profile
 exports.updateProfile = async (req, res) => {
   try {
-    const { dateOfBirth = "", about = "", contactNumber, gender } = req.body;
-    const id = req.user.id;
+    const {
+      firstName = "",
+      lastName = "",
+      dateOfBirth = "",
+      about = "",
+      contactNumber,
+      gender,
+    } = req.body;
 
-    // find the profile fields
-    const userDetails = await User.findById(id);
+    const userId = req.user.id;
+
+    // Fetch user and profile
+    const userDetails = await User.findById(userId);
     const profile = await Profile.findById(userDetails.additionalDetails);
+
+    // Update user info
+    userDetails.firstName = firstName;
+    userDetails.lastName = lastName;
+    await userDetails.save();
 
     // update the profile fields
     profile.dateOfBirth = dateOfBirth;
@@ -22,122 +35,158 @@ exports.updateProfile = async (req, res) => {
     // save the updated profile
     await profile.save();
 
+    // Find the updated user details
+    const updatedUserDetails = await User.findById(userId)
+      .populate("additionalDetails")
+      .exec();
+
     return res.status(200).json({
       success: true,
       message: "profile updated successfully",
-      profile,
+      updatedUserDetails,
     });
   } catch (error) {
-    console.log(error);
+    console.error("Error updating profile:", error);
     return res.status(500).json({
       success: false,
-      message: error.message,
+      message: "Failed to update profile",
+      error: error.message,
     });
   }
 };
 
-// delete account
-
+// Delete user account
 exports.deleteAccount = async (req, res) => {
   try {
-    console.log("printing Id", req.user.id);
-    const id = req.user.id;
+    const userId = req.user.id;
 
-    const user = await User.findById({ _id: id });
+    const user = await User.findById(userId);
     if (!user) {
       return res.status(404).json({
         success: false,
         message: "User not found",
       });
     }
-    // Delete associates Profile with there User
-    await Profile.findByIdAndDelete({ _id: user.additionalDetails });
+
+    // Delete Profile
+    await Profile.findByIdAndDelete(user.additionalDetails);
+
     // TODO: Unenroll User From All the Enrolled Courses
-    // Now Delete User
-    await User.findByIdAndDelete({ _id: id });
+
+    // Delete User
+    await User.findByIdAndDelete(userId);
+
     return res.status(200).json({
       success: true,
       message: "User deleted successfully",
     });
   } catch (error) {
-    console.log(error);
+    console.error("Error deleting account:", error);
     return res.status(500).json({
       success: false,
-      message: "User cannot be deleted",
+      message: "User could not be deleted",
+      error: error.message,
     });
   }
 };
 
+// Get user details
 exports.getAllUserDetails = async (req, res) => {
   try {
-    const id = req.user.id;
-    const userDetails = await User.findById(id)
+    const userId = req.user.id;
+
+    const userDetails = await User.findById(userId)
       .populate("additionalDetails")
       .exec();
-    console.log(userDetails);
-    res.status(200).json({
+
+    if (!userDetails) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
+
+    return res.status(200).json({
       success: true,
       message: "User Data fetched successfully",
       data: userDetails,
     });
   } catch (error) {
+    console.error("Error fetching user details:", error);
     return res.status(500).json({
       success: false,
-      message: error.message,
+      message: "Failed to fetch user details",
+      error: error.message,
     });
   }
 };
 
+// Update profile picture
 exports.updateDisplayPicture = async (req, res) => {
   try {
     const displayPicture = req.files?.displayPicture;
     const userId = req.user?.id;
+
+    if (!displayPicture) {
+      return res.status(400).json({
+        success: false,
+        message: "No image file provided",
+      });
+    }
+
     const image = await uploadImageToCloudinary(
       displayPicture,
       process.env.FOLDER_NAME,
       1000,
       1000
     );
-    // console.log(image);
+
     const updateProfile = await User.findByIdAndUpdate(
-      { _id: userId },
+      userId,
       { image: image.secure_url },
       { new: true }
     );
+
     return res.status(200).json({
       success: true,
-      message: "Image updated successfully",
+      message: "Profile picture updated successfully",
       data: updateProfile,
     });
   } catch (error) {
+    console.error("Error updating profile picture:", error);
     return res.status(500).json({
       success: false,
-      message: error.message,
+      message: "Failed to update profile picture",
+      error: error.message,
     });
   }
 };
 
+// Get all enrolled courses
 exports.getEnrolledCourses = async (req, res) => {
   try {
     const userId = req.user.id;
-    const userDetails = await User.findOne({ _id: userId })
-      .populate("courses")
-      .exec();
+
+    const userDetails = await User.findOne(userId).populate("courses").exec();
+
     if (!userDetails) {
-      return res.status(400).json({
+      return res.status(404).json({
         success: false,
-        message: `could not find user with id: ${userDetails}`,
+        message: "User not found",
       });
     }
+
     return res.status(200).json({
       success: true,
+      message: "Courses fetched successfully",
       data: userDetails.courses,
-      message: "successfully get all courses",
     });
   } catch (error) {
+    console.error("Error fetching enrolled courses:", error);
     return res.status(500).json({
       success: false,
-      message: error.message,
+      message: "Failed to fetch courses",
+      error: error.message,
     });
   }
 };

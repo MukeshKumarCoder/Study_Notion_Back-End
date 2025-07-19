@@ -13,10 +13,10 @@ exports.createSection = async (req, res) => {
         message: "Missing required properties",
       });
     }
-    // create a new section with the given name
+    // create a new section
     const newSection = await Section.create({ sectionName });
 
-    // Add the new section to the course content array
+    // Add the new section to the course
     const updatedCourse = await Course.findByIdAndUpdate(
       courseId,
       {
@@ -36,14 +36,13 @@ exports.createSection = async (req, res) => {
       })
       .exec();
 
-    // return the updated course object in the response
     return res.status(200).json({
       success: true,
       message: "Section created successfully",
       updatedCourse,
     });
   } catch (error) {
-    console.log(error);
+    console.error("Error creating section:", error);
     return res.status(500).json({
       success: false,
       message: "Internal server error",
@@ -56,14 +55,17 @@ exports.createSection = async (req, res) => {
 exports.updateSection = async (req, res) => {
   try {
     const { sectionName, sectionId } = req.body;
+
     const section = await Section.findByIdAndUpdate(
       sectionId,
       { sectionName },
       { new: true }
     );
+
     return res.status(200).json({
       success: true,
-      message: section,
+      message: "Section updated successfully",
+      section,
     });
   } catch (error) {
     console.log("Error updating section:", error);
@@ -77,13 +79,29 @@ exports.updateSection = async (req, res) => {
 // delete a section
 exports.deleteSection = async (req, res) => {
   try {
-    //HW -> req.params -> test
     const { sectionId } = req.params;
+
+    // Find the section to get the courseId
+    const section = await Section.findById(sectionId);
+    if (!section) {
+      return res.status(404).json({
+        success: false,
+        message: "Section not found",
+      });
+    }
+
+    // Delete the section
     await Section.findByIdAndDelete(sectionId);
-    //HW -> Course ko bhi update karo
+
+    // Remove section reference from Course
+    await Course.findByIdAndUpdate(
+      { courseContent: sectionId },
+      { $pull: { courseContent: sectionId } }
+    );
+
     return res.status(200).json({
       success: true,
-      message: "Section deleted",
+      message: "Section deleted and course updated",
     });
   } catch (error) {
     console.error("Error deleting section:", error);
