@@ -1,93 +1,91 @@
 const jwt = require("jsonwebtoken");
-const User = require("../models/User");
 require("dotenv").config();
 
-// auth
+// Middleware to authenticate the user using JWT token
 exports.auth = async (req, res, next) => {
   try {
     const token =
       req.cookies.token ||
       req.body.token ||
-      req.header("Authorization").replace("Bearer ", "");
+      req.header("Authorization")?.replace("Bearer ", "");
 
-    //if token missing, then return response
     if (!token) {
       return res.status(401).json({
         success: false,
-        message: "Token is missing",
+        message: "Authentication token is missing",
       });
     }
 
     //verify the token
     try {
       const decode = jwt.verify(token, process.env.JWT_SECRET);
-      console.log(decode);
       req.user = decode;
     } catch (error) {
       return res.status(401).json({
         success: false,
-        message: "Token is invalid",
+        message: "Invalid or expired token",
       });
     }
+
     next();
   } catch (error) {
-    return res.status(401).json({
+    return res.status(500).json({
       success: false,
-      message: "Something went wrong while Validating the Token",
+      message: "Error while validating the token",
     });
   }
 };
 
-//isStudent
+// Middleware to allow only Students
 exports.isStudent = async (req, res, next) => {
   try {
     if (req.User.accountType !== "Student") {
-      return res.status(401).json({
+      return res.status(403).json({
         success: false,
-        message: "This is a protected Route for Students Only",
+        message: "Access denied: Students only",
       });
     }
     next();
   } catch (error) {
     return res.status(500).json({
       success: false,
-      message: "User role can'not be varified, please try again",
+      message: "Error verifying student access",
     });
   }
 };
 
-//isInstructor
+// Middleware to allow only Instructors
 exports.isInstructor = async (req, res, next) => {
   try {
     if (req.user.accountType !== "Instructor") {
-      return res.status(401).json({
+      return res.status(403).json({
         success: false,
-        message: "This is a protectrd route for Instructor only",
+        message: "Access denied: Instructors only",
       });
     }
     next();
   } catch (error) {
     return res.status(500).json({
       success: false,
-      message: "User role can'not be verified, please try again",
+      message: "Error verifying instructor access",
     });
   }
 };
 
-//isAdmin
+// Middleware to allow only Admins
 exports.isAdmin = async (req, res, next) => {
   try {
     if (req.user.accountType !== "Admin") {
-      return res.status(401).json({
+      return res.status(403).json({
         success: false,
-        message: "This is a protected route for Admin only",
+        message: "Access denied: Admins only",
       });
     }
     next();
   } catch (error) {
     return res.status(500).json({
       success: false,
-      message: "User role cannot be verified, please try again",
+      message: "Error verifying admin access",
     });
   }
 };

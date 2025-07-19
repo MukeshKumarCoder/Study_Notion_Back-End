@@ -1,24 +1,23 @@
 const RatingAndReview = require("../models/RatingAndReview");
 const Course = require("../models/Course");
-const { mongo, default: mongoose } = require("mongoose");
+const mongoose = require("mongoose");
 
 // Create Rating
 exports.createRating = async (req, res) => {
   try {
-    // get user Id
     const userId = req.user.id;
-    // fetch data from req body
     const { rating, review, courseId } = req.body;
+
     // check if user is enrolled or not
     const courseDetails = await Course.findOne({
       _id: courseId,
-      studentsEnrolled: { $elemMatch: { $eq: userId } },
+      studentsEnrolled: { $in: [userId] },
     });
 
     if (!courseDetails) {
       return res.status(404).json({
         success: false,
-        message: "Student is not Enrolled in the course",
+        message: "Student is not enrolled in the course",
       });
     }
 
@@ -27,6 +26,7 @@ exports.createRating = async (req, res) => {
       user: userId,
       course: courseId,
     });
+
     if (alreadyReviewed) {
       return res.status(403).json({
         success: false,
@@ -38,23 +38,17 @@ exports.createRating = async (req, res) => {
     const ratingReview = await RatingAndReview.create({
       rating,
       review,
-      coures: courseId,
+      course: courseId,
       user: userId,
     });
 
     // update the course with this rating/review
-    const updatedCourseDetails = await Course.findByIdAndUpdate(
-      { _id: courseId },
-      {
-        $push: {
-          ratingAndReviews: ratingReview._id,
-        },
+    await Course.findByIdAndUpdate(courseId, {
+      $push: {
+        ratingAndReviews: ratingReview._id,
       },
-      {
-        new: true,
-      }
-    );
-    console.log(updatedCourseDetails);
+    });
+
     // return response
     return res.status(200).json({
       success: true,
@@ -65,7 +59,7 @@ exports.createRating = async (req, res) => {
     console.log(error);
     return res.status(500).json({
       success: false,
-      message: error.message,
+      message: "Internal server error",
     });
   }
 };
@@ -73,40 +67,27 @@ exports.createRating = async (req, res) => {
 // get Average Rating
 exports.getAverageRating = async (req, res) => {
   try {
-    // get course ID
     const courseId = req.body.courseId;
+
     // calculate avg rating
     const result = await RatingAndReview.aggregate([
-      {
-        $match: {
-          course: new mongoose.Types.ObjectId(courseId),
-        },
-      },
-      {
-        $group: {
-          _id: null,
-          averageRating: { $avg: "$rating" },
-        },
-      },
+      { $match: { course: new mongoose.Types.ObjectId(courseId) } },
+      { $group: { _id: null, averageRating: { $avg: "$rating" } } },
     ]);
-    // return rating
-    if (result.length > 0) {
-      return res.status(200).json({
-        success: true,
-        averageRating: result[0].averageRating,
-      });
-    }
-    // if no rating/review exist
+
     return res.status(200).json({
       success: true,
-      message: "Average Rating is 0, no rating given till now",
-      averageRating: 0,
+      averageRating: result[0]?.averageRating || 0,
+      message:
+        result.length > 0
+          ? "Average rating fetched successfully"
+          : "No ratings yet for this course",
     });
   } catch (error) {
     console.log(error);
     return res.status(500).json({
       success: false,
-      message: error.message,
+      message: "Internal server error",
     });
   }
 };
@@ -136,7 +117,7 @@ exports.getAllRating = async (req, res) => {
     console.log(error);
     return res.status(500).json({
       success: false,
-      message: error.message,
+      message: "Internal server error",
     });
   }
 };
