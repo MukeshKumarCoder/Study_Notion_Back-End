@@ -73,8 +73,6 @@ exports.signUp = async (req, res) => {
     //hash password
     const hashedPassword = await bcrypt.hash(password, 10);
     //Create the user
-    // let approved = "";
-    // approved === "Instructor" ? (approved = false) : (approved = true);
     let approved = accountType === "Instructor" ? false : true;
 
     // Create the Additional Profile For User
@@ -176,7 +174,7 @@ exports.login = async (req, res) => {
 exports.sendOTP = async (req, res) => {
   try {
     // fetch email from body
-    const { email } = req.body.email?.trim().toLowerCase();
+    const { email } = req.body;
 
     if (!email) {
       return res.status(400).json({

@@ -39,7 +39,7 @@ exports.auth = async (req, res, next) => {
 // Middleware to allow only Students
 exports.isStudent = async (req, res, next) => {
   try {
-    if (req.User.accountType !== "Student") {
+    if (!req.user || req.user.accountType !== "Student") {
       return res.status(403).json({
         success: false,
         message: "Access denied: Students only",

@@ -17,29 +17,44 @@ exports.updateCourseProgress = async (req, res) => {
 
     // Find the course progress document for the user and course
     let courseProgress = await CourseProgress.findOne({
-      courseID: courseId,
+      courseId: courseId,
       userId: userId,
     });
 
     if (!courseProgress) {
-      return res.status(404).json({
-        success: false,
-        message: "Course progress does not exist",
+      // If not exists, create it
+      courseProgress = await CourseProgress.create({
+        courseId,
+        userId,
+        completedVideos: [],
       });
     }
 
     // Check if the subsection is already completed
-    if (courseProgress.completedVideos.includes(subsectionId)) {
-      return res.status(400).json({ error: "Subsection already completed" });
+    if (
+      courseProgress.completedVideos.some(
+        (id) => id.toString() === subsectionId
+      )
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: "Subsection already completed",
+      });
     }
 
     // Add subsection to completedVideos
     courseProgress.completedVideos.push(subsectionId);
     await courseProgress.save();
 
-    return res.status(200).json({ message: "Course progress updated" });
+    return res.status(200).json({
+      success: true,
+      message: "Lecture marked as complete",
+      courseProgress,
+    });
   } catch (error) {
-    console.error(error);
-    return res.status(500).json({ error: "Internal server error" });
+    return res.status(500).json({
+      success: false,
+      message: error.message,
+    });
   }
 };

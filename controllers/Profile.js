@@ -1,6 +1,10 @@
 const Profile = require("../models/Profile");
 const User = require("../models/User");
+const Course = require("../models/Course");
+const CourseProgress = require("../models/CourseProgress");
 const { uploadImageToCloudinary } = require("../utils/imageUploader");
+const mongoose = require("mongoose");
+const { convertSecondsToDuration } = require("../utils/setToDuration");
 require("dotenv").config();
 
 // method for updating a profile
@@ -71,7 +75,13 @@ exports.deleteAccount = async (req, res) => {
     // Delete Profile
     await Profile.findByIdAndDelete(user.additionalDetails);
 
-    // TODO: Unenroll User From All the Enrolled Courses
+    // Unenroll User From All the Enrolled Courses
+    await Course.updateMany(
+      { studentsEnrolled: userId },
+      { $pull: { studentsEnrolled: userId } }
+    );
+
+    await CourseProgress.deleteMany({ userId });
 
     // Delete User
     await User.findByIdAndDelete(userId);
@@ -167,19 +177,63 @@ exports.getEnrolledCourses = async (req, res) => {
   try {
     const userId = req.user.id;
 
-    const userDetails = await User.findOne(userId).populate("courses").exec();
+    let user = await User.findById(userId)
+      .populate({
+        path: "courses",
+        populate: {
+          path: "courseContent",
+          populate: {
+            path: "subSection",
+          },
+        },
+      })
+      .exec();
 
-    if (!userDetails) {
+    if (!user) {
       return res.status(404).json({
         success: false,
         message: "User not found",
       });
     }
 
+    user = user.toObject();
+
+    for (let i = 0; i < user.courses.length; i++) {
+      const course = user.courses[i];
+      let totalDurationInSeconds = 0;
+
+      course.courseContent.forEach((content) => {
+        content.subSection.forEach((sub) => {
+          totalDurationInSeconds += parseInt(sub.timeDuration || 0);
+        });
+      });
+
+      const totalDuration = convertSecondsToDuration(totalDurationInSeconds);
+
+      let courseProgress = await CourseProgress.findOne({
+        courseId: course._id,
+        userId,
+      });
+
+      const completedVideos = courseProgress?.completedVideos?.length || 0;
+      const totalSubsections = course.courseContent.reduce(
+        (acc, curr) => acc + (curr.subSection?.length || 0),
+        0
+      );
+
+      const progressPercentage =
+        totalSubsections === 0
+          ? 0
+          : Math.round((completedVideos / totalSubsections) * 100 * 100) / 100;
+
+      user.courses[i].totalDuration = totalDuration;
+      user.courses[i].progressPercentage = progressPercentage;
+    }
+
     return res.status(200).json({
       success: true,
       message: "Courses fetched successfully",
-      data: userDetails.courses,
+      data: user.courses,
     });
   } catch (error) {
     console.error("Error fetching enrolled courses:", error);
@@ -190,3 +244,34 @@ exports.getEnrolledCourses = async (req, res) => {
     });
   }
 };
+
+// Get Instructor Data
+exports.instructorDashboard = async (req, res) => {
+  try {
+    const courseDetails = await Course.find({ instructor: req.user.id });
+
+    const courseData = courseDetails.map((course) => {
+      const totalStudentsEnrolled = course.studentEnrolled.length;
+      const totalAmountGenerated = totalStudentsEnrolled * course.price;
+
+      // Create a new object with the additional fields
+      const courseDataWithStats = {
+        _id: course._id,
+        courseName: course.courseName,
+        courseDescription: course.courseDescription,
+        // Include other course properties as needed
+        totalStudentsEnrolled,
+        totalAmountGenerated,
+      };
+
+      return courseDataWithStats;
+    });
+
+    res.status(200).json({ courses: courseData });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Server Error" });
+  }
+};
+
+

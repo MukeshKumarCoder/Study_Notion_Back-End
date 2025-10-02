@@ -1,5 +1,6 @@
 const { contactUsEmail } = require("../mail/templates/contactFormResponse");
 const mailSender = require("../utils/mailSender");
+require("dotenv").config();
 
 exports.contactUsController = async (req, res) => {
   const { email, firstName, lastName, message, phoneNo, countryCode } =
@@ -20,7 +21,15 @@ exports.contactUsController = async (req, res) => {
     });
   }
   try {
-    const emailRes = await mailSender(
+    // 1. Send to admin
+    await mailSender(
+      process.env.MAIL_USER,
+      "New Contact Form Submission",
+      contactUsEmail(email, firstName, lastName, message, phoneNo, countryCode)
+    );
+
+    // 2. Send to user
+    await mailSender(
       email,
       "Your Data send successfully",
       contactUsEmail(email, firstName, lastName, message, phoneNo, countryCode)
